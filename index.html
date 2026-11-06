@@ -178,7 +178,7 @@
     <section class="config">
       <button class="toggle" id="toggle" aria-expanded="false" aria-controls="panel">⚙️ Cambiar fechas</button>
       <div class="card panel" id="panel">
-        <p class="hint">Se guardan en este navegador. La próxima vez que abras la página seguirán aquí. Las horas son en hora de Monterrey.</p>
+        <p class="hint">Se guardan en este navegador. La próxima vez que abras la página seguirán aquí.</p>
         <div class="field">
           <label for="inSalida"> Día y hora en que te fuiste  </label>
           <input type="datetime-local" id="inSalida">
@@ -208,12 +208,6 @@
   const SALIDA   = "2026-09-12T17:43";  // día que se fue a España
   const REGRESO  = "2027-01-30T12:00";  // día que regresa
 
-  // Todas las horas se cuentan en hora de Monterrey (UTC-6, sin horario de verano),
-  // así el contador marca lo mismo aunque la página se abra en España o en otro país.
-  const ZONA = "-06:00";
-  const ZONA_NOMBRE = "America/Monterrey";
-  const enMty = txt => new Date(txt + ZONA).getTime();
-
   function leer(clave, defecto) {
     try { return localStorage.getItem("contador_" + clave) || defecto; } catch (e) { return defecto; }
   }
@@ -226,17 +220,16 @@
 
   let salida, regreso;
   const fmt = new Intl.DateTimeFormat("es", {
-    day: "numeric", month: "long", year: "numeric", hour: "numeric", minute: "2-digit",
-    timeZone: ZONA_NOMBRE
+    day: "numeric", month: "long", year: "numeric", hour: "numeric", minute: "2-digit"
   });
 
   function aplicar(salidaTxt, regresoTxt) {
-    salida = enMty(salidaTxt);
-    regreso = enMty(regresoTxt);
+    salida = new Date(salidaTxt).getTime();
+    regreso = new Date(regresoTxt).getTime();
     document.getElementById("inSalida").value = salidaTxt;
     document.getElementById("inRegreso").value = regresoTxt;
-    document.getElementById("fechaSalida").textContent = fmt.format(salida) + " (hora de Monterrey)";
-    document.getElementById("fechaRegreso").textContent = fmt.format(regreso) + " (hora de Monterrey)";
+    document.getElementById("fechaSalida").textContent = fmt.format(salida);
+    document.getElementById("fechaRegreso").textContent = fmt.format(regreso);
   }
   aplicar(leer("salida", SALIDA), leer("regreso", REGRESO));
 
