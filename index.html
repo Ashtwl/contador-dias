@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contador de días</title>
+<style>
+  :root {
+    --bg: #f6f5f2; --card: #ffffff; --text: #1d1d1f; --muted: #6b6b70;
+    --line: #e4e2dd; --accent-past: #3b6fd8; --accent-future: #d8653b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141416; --card: #1e1e21; --text: #f2f2f4; --muted: #9a9aa2;
+      --line: #2e2e33; --accent-past: #7aa2f7; --accent-future: #f7a07a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+    padding: 40px 16px;
+  }
+  h1 { font-size: 1.6rem; margin: 0 0 28px; font-weight: 650; text-align: center; }
+  .grid { display: grid; gap: 20px; width: 100%; max-width: 760px; }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+    padding: 24px; border-top: 4px solid var(--accent);
+  }
+  .card.past { --accent: var(--accent-past); }
+  .card.future { --accent: var(--accent-future); }
+  .head { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+  .label { font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+  .title { font-size: 1.15rem; font-weight: 600; margin-top: 4px; }
+  input[type="datetime-local"], input[type="text"] {
+    font: inherit; color: var(--text); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px;
+  }
+  input[type="text"] { width: 100%; max-width: 280px; font-weight: 600; }
+  .units { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 20px; }
+  .unit { text-align: center; background: var(--bg); border-radius: 12px; padding: 14px 4px; }
+  .num { font-size: clamp(1.6rem, 6vw, 2.6rem); font-weight: 700; font-variant-numeric: tabular-nums; color: var(--accent); }
+  .name { font-size: .78rem; color: var(--muted); margin-top: 2px; }
+  .note { margin-top: 14px; font-size: .9rem; color: var(--muted); }
+</style>
+</head>
+<body>
+  <h1>Contador de días</h1>
+
+  <div class="grid">
+    <section class="card past">
+      <div class="head">
+        <div>
+          <div class="label">Han pasado</div>
+          <input type="text" id="pastName" aria-label="Nombre del evento pasado">
+        </div>
+        <input type="datetime-local" id="pastDate" aria-label="Fecha pasada">
+      </div>
+      <div class="units" id="pastUnits"></div>
+      <div class="note" id="pastNote"></div>
+    </section>
+
+    <section class="card future">
+      <div class="head">
+        <div>
+          <div class="label">Faltan</div>
+          <input type="text" id="futureName" aria-label="Nombre del evento futuro">
+        </div>
+        <input type="datetime-local" id="futureDate" aria-label="Fecha futura">
+      </div>
+      <div class="units" id="futureUnits"></div>
+      <div class="note" id="futureNote"></div>
+    </section>
+  </div>
+
+<script>
+  const defaults = {
+    pastName: "Desde el inicio del año", pastDate: "2026-01-01T00:00",
+    futureName: "Hasta Año Nuevo", futureDate: "2027-01-01T00:00"
+  };
+
+  function load(key) {
+    try { return localStorage.getItem("contador_" + key) || defaults[key]; }
+    catch (e) { return defaults[key]; }
+  }
+  function save(key, val) {
+    try { localStorage.setItem("contador_" + key, val); } catch (e) {}
+  }
+
+  for (const key of Object.keys(defaults)) {
+    const el = document.getElementById(key);
+    el.value = load(key);
+    el.addEventListener("input", () => { save(key, el.value); tick(); });
+  }
+
+  function buildUnits(container) {
+    container.innerHTML = ["Días", "Horas", "Minutos", "Segundos"]
+      .map(n => `<div class="unit"><div class="num">0</div><div class="name">${n}</div></div>`).join("");
+    return container.querySelectorAll(".num");
+  }
+  const pastNums = buildUnits(document.getElementById("pastUnits"));
+  const futureNums = buildUnits(document.getElementById("futureUnits"));
+
+  function split(ms) {
+    const s = Math.floor(Math.abs(ms) / 1000);
+    return [Math.floor(s / 86400), Math.floor(s % 86400 / 3600), Math.floor(s % 3600 / 60), s % 60];
+  }
+
+  function render(nums, ms) {
+    split(ms).forEach((v, i) => {
+      nums[i].textContent = i === 0 ? v.toLocaleString("es") : String(v).padStart(2, "0");
+    });
+  }
+
+  function tick() {
+    const now = Date.now();
+    const past = new Date(document.getElementById("pastDate").value).getTime();
+    const future = new Date(document.getElementById("futureDate").value).getTime();
+
+    const pNote = document.getElementById("pastNote");
+    if (isNaN(past)) { render(pastNums, 0); pNote.textContent = "Elige una fecha."; }
+    else {
+      render(pastNums, now - past);
+      pNote.textContent = past > now ? "Esa fecha todavía no ha llegado." :
+        "Total: " + Math.floor((now - past) / 86400000).toLocaleString("es") + " días completos.";
+    }
+
+    const fNote = document.getElementById("futureNote");
+    if (isNaN(future)) { render(futureNums, 0); fNote.textContent = "Elige una fecha."; }
+    else if (future <= now) { render(futureNums, 0); fNote.textContent = "¡La fecha ya llegó!"; }
+    else {
+      render(futureNums, future - now);
+      fNote.textContent = "Total: " + Math.ceil((future - now) / 86400000).toLocaleString("es") + " días por delante.";
+    }
+  }
+
+  tick();
+  setInterval(tick, 1000);
+</script>
+</body>
+</html>
